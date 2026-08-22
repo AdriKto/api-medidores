@@ -1,11 +1,7 @@
-# Guarda este archivo como main.py
-# Requiere: pip install fastapi uvicorn python-multipart pyodbc
-
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 import time
-import os
 
 app = FastAPI()
 
@@ -16,11 +12,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Credenciales de Supabase
+# Credenciales de Supabase (Reemplazar por las tuyas)
 SUPABASE_URL = "https://pjhjcaznmyeeinvrftde.supabase.co"
 SUPABASE_KEY = "sb_publishable_mCDAE9iyg5QYLCzosksHvA_XoqOR9vv"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+@app.get("/api/medidores/{id_medidor}")
+async def obtener_medidor(id_medidor: int):
+    """Consulta de qué lote es el medidor escaneado"""
+    try:
+        # Busca en la tabla 'medidores' de Supabase
+        response = supabase.table("medidores").select("lote").eq("id", id_medidor).execute()
+        
+        datos = response.data
+        if not datos:
+            return {"status": "error", "mensaje": "Medidor no encontrado en la base de datos"}
+            
+        return {"status": "success", "lote": datos[0]["lote"]}
+
+    except Exception as e:
+        return {"status": "error", "mensaje": str(e)}
+
 
 @app.post("/api/lecturas")
 async def guardar_lectura(
@@ -28,11 +42,10 @@ async def guardar_lectura(
     valor: float = Form(...),
     foto: UploadFile = File(...)
 ):
+    """Guarda la lectura y sube la foto a Supabase"""
     try:
-        # 1. Leer el archivo recibido
         file_bytes = await foto.read()
         
-        # 2. Subir la imagen al Storage de Supabase
         timestamp = int(time.time())
         nombre_archivo = f"{id_medidor}_{timestamp}.jpg"
         
@@ -42,7 +55,7 @@ async def guardar_lectura(
         # Obtener la URL pública de la imagen
         public_url = supabase.storage.from_("evidencias_medidores").get_public_url(nombre_archivo)
 
-        # 3. Insertar el registro en la tabla de PostgreSQL en Supabase
+        # Insertar el registro en la tabla de PostgreSQL en Supabase
         datos_insert = {
             "id_medidor": id_medidor,
             "valor_lectura": valor,
@@ -54,5 +67,3 @@ async def guardar_lectura(
 
     except Exception as e:
         return {"status": "error", "mensaje": str(e)}
-
-# Para ejecutar localmente mientras pruebas: uvicorn main:app --reload
