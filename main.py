@@ -17,8 +17,8 @@ app.add_middleware(
 )
 
 # Credenciales de Supabase
-SUPABASE_URL = "TU_URL_DE_SUPABASE"
-SUPABASE_KEY = "TU_API_KEY_ANON"
+SUPABASE_URL = "https://pjhjcaznmyeeinvrftde.supabase.co"
+SUPABASE_KEY = "sb_publishable_mCDAE9iyg5QYLCzosksHvA_XoqOR9vv"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
