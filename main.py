@@ -87,15 +87,11 @@ async def guardar_lectura(
 @app.get("/api/lecturas")
 async def listar_lecturas():
     """
-    Devuelve todo el historial de lecturas cruzando la tabla 'lecturas'
-    con la tabla 'medidores' para obtener el nombre del lote.
-    Esto lo usa el archivo admin.html para generar el CSV.
+    Devuelve el historial usando la vista de PostgreSQL 
+    que ya calcula el consumo neto contra el mes anterior.
     """
     try:
-        response = supabase.table("lecturas").select(
-            "id_medidor, valor_lectura, fecha_lectura, ruta_evidencia, medidores(lote)"
-        ).order("fecha_lectura", desc=True).execute()
-        
+        response = supabase.table("vista_consumos").select("*").order("fecha_lectura", desc=True).execute()
         return {"status": "success", "data": response.data}
     except Exception as e:
         return {"status": "error", "mensaje": str(e)}
