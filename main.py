@@ -1,6 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
+from pydantic import BaseModel
 import time
 
 # Inicializamos la aplicación FastAPI
@@ -23,6 +24,10 @@ SUPABASE_KEY = "sb_publishable_mCDAE9iyg5QYLCzosksHvA_XoqOR9vv"
 # Conexión con Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Modelo para recibir los datos del frontend en el ABM
+class Medidor(BaseModel):
+    id: int
+    lote: str
 
 # --- ENDPOINTS DE LA APLICACIÓN ---
 
@@ -54,7 +59,6 @@ async def guardar_lectura(
     """
     Recibe el ID, el consumo y el archivo de imagen desde el celular.
     Sube la foto al storage de Supabase y guarda el registro en la tabla 'lecturas'.
-    (La fecha se carga sola en PostgreSQL gracias a la función now() que configuramos).
     """
     try:
         # 1. Leemos los bytes de la foto que mandó el celular
@@ -93,5 +97,47 @@ async def listar_lecturas():
     try:
         response = supabase.table("vista_consumos").select("*").order("fecha_lectura", desc=True).execute()
         return {"status": "success", "data": response.data}
+    except Exception as e:
+        return {"status": "error", "mensaje": str(e)}
+
+
+# --- NUEVOS ENDPOINTS PARA EL ABM DE MEDIDORES ---
+
+@app.get("/api/medidores")
+async def listar_medidores():
+    """Trae el listado completo de medidores."""
+    try:
+        response = supabase.table("medidores").select("*").order("id").execute()
+        return {"status": "success", "data": response.data}
+    except Exception as e:
+        return {"status": "error", "mensaje": str(e)}
+
+@app.post("/api/medidores")
+async def crear_medidor(medidor: Medidor):
+    """Da de alta un nuevo medidor."""
+    try:
+        supabase.table("medidores").insert({"id": medidor.id, "lote": medidor.lote}).execute()
+        return {"status": "success", "mensaje": "Medidor creado correctamente."}
+    except Exception as e:
+        return {"status": "error", "mensaje": str(e)}
+
+@app.put("/api/medidores/{id_medidor}")
+async def actualizar_medidor(id_medidor: int, medidor: Medidor):
+    """Actualiza el lote asignado a un medidor, o modifica su ID si hubo error de tipeo."""
+    try:
+        supabase.table("medidores").update({
+            "id": medidor.id,
+            "lote": medidor.lote
+        }).eq("id", id_medidor).execute()
+        return {"status": "success", "mensaje": "Medidor actualizado."}
+    except Exception as e:
+        return {"status": "error", "mensaje": str(e)}
+
+@app.delete("/api/medidores/{id_medidor}")
+async def eliminar_medidor(id_medidor: int):
+    """Borra un medidor del sistema."""
+    try:
+        supabase.table("medidores").delete().eq("id", id_medidor).execute()
+        return {"status": "success", "mensaje": "Medidor eliminado."}
     except Exception as e:
         return {"status": "error", "mensaje": str(e)}
